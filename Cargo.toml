@@ -1,0 +1,13 @@
+[package]
+name = "bevy-flair-html-extension"
+version = "0.1.0-alpha.1"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.17.3", default-features = false, features = [
+	"bevy_asset",
+	"bevy_ui",
+] }
+bevy_flair = "0.6.0"
+serde = "1.0.228"
+thiserror = "2.0.18"
