@@ -102,7 +102,7 @@ fn title_menu_interaction(
 To remove the UI (such as on a state change), simply remove the resource:
 
 ```rust
-	commands.remove_resource::<HtmlCssUiResource>();
+commands.remove_resource::<HtmlCssUiResource>();
 ```
 
 Or, to change it, just overwrite the resource with the new one.
