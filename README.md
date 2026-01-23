@@ -73,10 +73,10 @@ Here is an example HTML document from one of my projects:
 You can use this Rust code to spawn the UI:
 
 ```rust
-	commands.insert_resource(HtmlCssUiResource {
-		html: asset_server.load("html/title_screen/title_screen.html"),
-		css: Some(asset_server.load("css/title_screen/title_screen.css")),
-	});
+commands.insert_resource(HtmlCssUiResource {
+	html: asset_server.load("path/to/title_screen.html"),
+	css: Some(asset_server.load("path/to/title_screen.css")),
+});
 ```
 
 If you want to detect a button press, a simple way is to give your button a class and use bevy_flair's APIs to query for it:
