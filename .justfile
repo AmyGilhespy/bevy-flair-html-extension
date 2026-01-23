@@ -49,6 +49,12 @@ ci:
     cargo test
     cargo build
 
+publish-dry-run: ci
+    cargo publish -p bevy-flair-html-extension --dry-run
+
+publish-for-real: publish-dry-run
+    cargo publish -p bevy-flair-html-extension
+
 # Added target with `rustup target add x86_64-unknown-linux-gnu`
 [private]
 cross-linux:
