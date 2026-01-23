@@ -16,6 +16,7 @@ pub fn spawn_html_ui(
 	commands: &mut Commands,
 	asset: &HtmlUiAsset,
 	id: AssetId<HtmlUiAsset>,
+	style_sheet: NodeStyleSheet,
 ) -> Entity {
 	let root_entity = commands
 		.spawn((
@@ -25,6 +26,7 @@ pub fn spawn_html_ui(
 				..default()
 			},
 			HtmlUiRoot { id },
+			style_sheet,
 		))
 		.id();
 
