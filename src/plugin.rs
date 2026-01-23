@@ -53,7 +53,7 @@ fn html_ui_watch_load(
 	mut commands: Commands,
 	assets: Res<Assets<HtmlUiAsset>>,
 	handles: Option<Res<HtmlCssUiResource>>,
-	entity: Local<Option<Entity>>,
+	mut entity: Local<Option<Entity>>,
 	q_roots: Query<(Entity, &HtmlUiRoot)>,
 ) {
 	let Some(res) = handles else { return };
@@ -67,10 +67,11 @@ fn html_ui_watch_load(
 			}
 		}
 	}
-	let entity = spawn_html_ui(&mut commands, asset_html, id_html);
+	let ent = spawn_html_ui(&mut commands, asset_html, id_html);
+	*entity = Some(ent);
 	if let Some(res_css) = &res.css {
 		commands
-			.entity(entity)
+			.entity(ent)
 			.insert(NodeStyleSheet::new(res_css.clone()));
 	}
 }

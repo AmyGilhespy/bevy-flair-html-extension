@@ -80,7 +80,8 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 }
 
 fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
-	let mut parts = src.split_whitespace();
+	let parts = split_quoted_whitespace(src);
+	let mut parts = parts.into_iter();
 
 	let tag_name = parts
 		.next()
@@ -105,6 +106,31 @@ fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
 	}
 
 	Ok((tag, classes, gap))
+}
+
+fn split_quoted_whitespace(s: &str) -> Vec<&str> {
+	let mut parts = Vec::new();
+	let mut start = 0;
+	let mut in_quotes = false;
+
+	for (i, c) in s.char_indices() {
+		match c {
+			'"' => in_quotes = !in_quotes,
+			c if c.is_whitespace() && !in_quotes => {
+				if start < i {
+					parts.push(&s[start..i]);
+				}
+				start = i + c.len_utf8();
+			}
+			_ => {}
+		}
+	}
+
+	if start < s.len() {
+		parts.push(&s[start..]);
+	}
+
+	parts
 }
 
 fn parse_val(string: &str) -> Result<Val, HtmlUiError> {
