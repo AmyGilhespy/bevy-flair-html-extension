@@ -13,7 +13,7 @@ pub enum HtmlNode {
 	Text(String),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum HtmlTag {
 	Ui,
 	VBox,
