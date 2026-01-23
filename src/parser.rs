@@ -79,6 +79,119 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 	Ok(nodes)
 }
 
+#[cfg(test)]
+mod parse_htmlish_tests {
+	use bevy::ui::Val;
+
+	use super::super::ast::{HtmlNode, HtmlTag};
+	use super::parse_htmlish;
+
+	const GOOD_HTML: &str = r#"
+		<ui class="a">
+			<button class="b c">
+				<vbox class="d" gap="12.25px">
+					<spacer></spacer>
+					<label>Hello, world</label>
+					<spacer></spacer>
+				</vbox>
+			</button>
+		</ui>
+		"#;
+
+	#[test]
+	fn test() {
+		let good_parsed = parse_htmlish(&GOOD_HTML.into());
+		assert!(good_parsed.is_ok(), "Good HTML returned an error.");
+		let good = good_parsed.unwrap(); // Vec<HtmlNode>
+		assert_eq!(good.len(), 1, "Wrong number of HTML <ui> nodes.");
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = &good[0]
+		else {
+			panic!("<ui> is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::Ui, "<ui> tag was not <ui>.");
+		assert_eq!(*classes, vec!["a".to_owned()]);
+		assert_eq!(*gap, Val::Auto);
+		assert_eq!(children.len(), 1, "Wrong number of HTML <button> nodes.");
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = &children[0]
+		else {
+			panic!("<button> is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::Button, "<button> tag was not <button>.");
+		assert_eq!(*classes, vec!["b".to_owned(), "c".to_owned()]);
+		assert_eq!(*gap, Val::Auto);
+		assert_eq!(children.len(), 1, "Wrong number of HTML <vbox> nodes.");
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = &children[0]
+		else {
+			panic!("<vbox> is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::VBox, "<vbox> tag was not <vbox>.");
+		assert_eq!(*classes, vec!["d".to_owned()]);
+		assert_eq!(*gap, Val::Px(12.25));
+		assert_eq!(children.len(), 3, "Wrong number of HTML <vbox> children.");
+		let child0 = &children[0];
+		let child1 = &children[1];
+		let child2 = &children[2];
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = child0
+		else {
+			panic!("<spacer> #0 is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::Spacer, "<spacer> tag was not <spacer>.");
+		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
+		assert_eq!(*gap, Val::Auto);
+		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = child1
+		else {
+			panic!("<label> #1 is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::Label, "<label> tag was not <label>.");
+		assert_eq!(classes.len(), 0, "Wrong number of HTML <label> classes.");
+		assert_eq!(*gap, Val::Auto);
+		assert_eq!(children.len(), 1, "Wrong number of HTML <label> children.");
+		let HtmlNode::Text(text) = &children[0] else {
+			panic!("<label> text is not Text");
+		};
+		assert_eq!(text, "Hello, world");
+		let HtmlNode::Element {
+			tag,
+			classes,
+			gap,
+			children,
+		} = child2
+		else {
+			panic!("<spacer> #2 is not Element");
+		};
+		assert_eq!(*tag, HtmlTag::Spacer, "<spacer> tag was not <spacer>.");
+		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
+		assert_eq!(*gap, Val::Auto);
+		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
+	}
+}
+
 fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
 	let parts = split_quoted_whitespace(src);
 	let mut parts = parts.into_iter();
