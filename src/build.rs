@@ -25,6 +25,10 @@ pub fn spawn_html_ui(
 				height: Val::Percent(100.0),
 				..default()
 			},
+			Pickable {
+				should_block_lower: false,
+				is_hoverable: false,
+			},
 			HtmlUiRoot { id },
 			style_sheet,
 		))
@@ -81,12 +85,25 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				HtmlTag::Label => {
 					// Label nodes will get text children
 				}
-				HtmlTag::Ui | HtmlTag::Spacer => {
+				HtmlTag::Spacer => {
 					entity.insert(Node {
 						width: Val::Percent(100.0),
 						height: Val::Percent(100.0),
 						..default()
 					});
+				}
+				HtmlTag::Ui => {
+					entity.insert((
+						Node {
+							width: Val::Percent(100.0),
+							height: Val::Percent(100.0),
+							..default()
+						},
+						Pickable {
+							should_block_lower: false,
+							is_hoverable: false,
+						},
+					));
 				}
 			}
 

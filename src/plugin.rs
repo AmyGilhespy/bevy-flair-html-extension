@@ -63,7 +63,18 @@ fn html_ui_watch_load(
 	mut root_entity: Local<Option<Entity>>,
 	q_roots: Query<(Entity, &HtmlUiRoot)>,
 ) {
-	let Some(res) = handles else { return };
+	let Some(res) = handles else {
+		if loaded_handles_ids.is_some()
+			&& let Some(re) = *root_entity
+		{
+			for (e, _) in q_roots.iter() {
+				if e == re {
+					commands.entity(e).despawn();
+				}
+			}
+		}
+		return;
+	};
 
 	let id_html = res.html.id();
 	if let Some(loaded_ids) = *loaded_handles_ids {
