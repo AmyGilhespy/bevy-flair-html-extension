@@ -46,9 +46,12 @@ pub fn spawn_html_ui(
 fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 	match node {
 		HtmlNode::Text(text) => {
+			/*
 			commands.entity(parent).with_children(|p| {
 				p.spawn(Text::new(text.clone()));
 			});
+			*/
+			commands.entity(parent).insert(Text::new(text.clone()));
 		}
 
 		HtmlNode::Element(HtmlElement {
@@ -119,6 +122,7 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				HtmlTag::Ui => {
 					entity.insert((
 						Node {
+							position_type: PositionType::Absolute,
 							display: Display::Flex,
 							flex_direction: FlexDirection::Column,
 							row_gap: *gap,
