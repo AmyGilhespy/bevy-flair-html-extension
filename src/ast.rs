@@ -14,6 +14,7 @@ pub struct HtmlElement {
 	pub name_id: Option<String>,
 	pub classes: Vec<String>,
 	pub gap: Val,
+	pub autofocus: bool,
 	pub children: Vec<HtmlNode>,
 }
 

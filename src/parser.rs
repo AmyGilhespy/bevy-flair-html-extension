@@ -25,6 +25,7 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 					name_id,
 					classes,
 					gap,
+					autofocus,
 					children,
 				} = stack
 					.pop()
@@ -43,6 +44,7 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 					name_id,
 					classes,
 					gap,
+					autofocus,
 					children,
 				});
 
@@ -98,7 +100,7 @@ mod parse_htmlish_tests {
 
 	const GOOD_HTML: &str = r#"
 		<ui class="a">
-			<button id="my-button" class="b c">
+			<button id="my-button" class="b c" autofocus>
 				<vbox class="d" gap="12.25px">
 					<spacer></spacer>
 					<label id="my-label">Hello, world</label>
@@ -119,6 +121,7 @@ mod parse_htmlish_tests {
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = &good[0]
 		else {
@@ -128,12 +131,14 @@ mod parse_htmlish_tests {
 		assert!(name_id.is_none(), "<ui> had non-existent id field.");
 		assert_eq!(*classes, vec!["a".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
+		assert!(!autofocus, "<ui> had non-existent autofocus.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <button> nodes.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = &children[0]
 		else {
@@ -146,12 +151,14 @@ mod parse_htmlish_tests {
 		);
 		assert_eq!(*classes, vec!["b".to_owned(), "c".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
+		assert!(autofocus, "<button> lacked autofocus.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <vbox> nodes.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = &children[0]
 		else {
@@ -161,6 +168,7 @@ mod parse_htmlish_tests {
 		assert!(name_id.is_none(), "<vbox> had non-existent id field.");
 		assert_eq!(*classes, vec!["d".to_owned()]);
 		assert_eq!(*gap, Val::Px(12.25));
+		assert!(!autofocus, "<vbox> had non-existent autofocus.");
 		assert_eq!(children.len(), 3, "Wrong number of HTML <vbox> children.");
 		let child0 = &children[0];
 		let child1 = &children[1];
@@ -170,6 +178,7 @@ mod parse_htmlish_tests {
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = child0
 		else {
@@ -179,12 +188,14 @@ mod parse_htmlish_tests {
 		assert!(name_id.is_none(), "<spacer> had non-existent id field.");
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
+		assert!(!autofocus, "<spacer> had non-existent autofocus.");
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = child1
 		else {
@@ -197,6 +208,7 @@ mod parse_htmlish_tests {
 		);
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <label> classes.");
 		assert_eq!(*gap, Val::Auto);
+		assert!(!autofocus, "<label> had non-existent autofocus.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <label> children.");
 		let HtmlNode::Text(text) = &children[0] else {
 			panic!("<label> text is not Text");
@@ -207,6 +219,7 @@ mod parse_htmlish_tests {
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) = child2
 		else {
@@ -216,6 +229,7 @@ mod parse_htmlish_tests {
 		assert!(name_id.is_none(), "<spacer> had non-existent id field.");
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
+		assert!(!autofocus, "<spacer> had non-existent autofocus.");
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
 	}
 }
@@ -233,6 +247,7 @@ fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
 	let mut name_id = None;
 	let mut classes = Vec::new();
 	let mut gap: Val = Val::Auto;
+	let mut autofocus: bool = false;
 
 	for part in parts {
 		if let Some(rest) = part.strip_prefix("id=\"") {
@@ -246,6 +261,8 @@ fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
 			);
 		} else if let Some(rest) = part.strip_prefix("gap=\"") {
 			gap = parse_val(rest.trim_end_matches('"'))?;
+		} else if part == "autofocus" {
+			autofocus = true;
 		}
 	}
 
@@ -254,6 +271,7 @@ fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
 		name_id,
 		classes,
 		gap,
+		autofocus,
 		children: Vec::new(),
 	})
 }

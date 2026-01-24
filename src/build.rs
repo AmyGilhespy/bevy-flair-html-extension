@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use bevy::{
+	input_focus::AutoFocus, prelude::*, ui::auto_directional_navigation::AutoDirectionalNavigation,
+};
 use bevy_flair::prelude::*;
 
 use crate::{
@@ -54,12 +56,17 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 			name_id,
 			classes,
 			gap,
+			autofocus,
 			children,
 		}) => {
 			let mut entity = commands.spawn((Node::default(),));
 
 			if let Some(name) = name_id {
 				entity.insert(Name::new(name.clone()));
+			}
+
+			if *autofocus {
+				entity.insert(AutoFocus);
 			}
 
 			if !classes.is_empty() {
@@ -86,7 +93,7 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				}
 				HtmlTag::Node => {}
 				HtmlTag::Button => {
-					entity.insert(Button);
+					entity.insert((Button, AutoDirectionalNavigation::default()));
 				}
 				HtmlTag::Label => {
 					// Label nodes will get text children
