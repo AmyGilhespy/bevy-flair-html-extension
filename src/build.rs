@@ -23,14 +23,12 @@ pub fn spawn_html_ui(
 	let root_entity = commands
 		.spawn((
 			Node {
+				position_type: PositionType::Absolute,
 				width: Val::Percent(100.0),
 				height: Val::Percent(100.0),
 				..default()
 			},
-			Pickable {
-				should_block_lower: false,
-				is_hoverable: false,
-			},
+			Pickable::IGNORE,
 			HtmlUiRoot { id },
 			style_sheet,
 		))
@@ -79,20 +77,26 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 			#[allow(clippy::match_same_arms)]
 			match tag {
 				HtmlTag::VBox => {
-					entity.insert(Node {
-						display: Display::Flex,
-						flex_direction: FlexDirection::Column,
-						row_gap: *gap,
-						..default()
-					});
+					entity.insert((
+						Node {
+							display: Display::Flex,
+							flex_direction: FlexDirection::Column,
+							row_gap: *gap,
+							..default()
+						},
+						Pickable::IGNORE,
+					));
 				}
 				HtmlTag::HBox => {
-					entity.insert(Node {
-						display: Display::Flex,
-						flex_direction: FlexDirection::Row,
-						column_gap: *gap,
-						..default()
-					});
+					entity.insert((
+						Node {
+							display: Display::Flex,
+							flex_direction: FlexDirection::Row,
+							column_gap: *gap,
+							..default()
+						},
+						Pickable::IGNORE,
+					));
 				}
 				HtmlTag::Node => {}
 				HtmlTag::Button => {
@@ -107,17 +111,17 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				}
 				HtmlTag::Label => {
 					// Label nodes will get text children
-					entity.insert(Pickable {
-						is_hoverable: false,
-						should_block_lower: false,
-					});
+					entity.insert(Pickable::IGNORE);
 				}
 				HtmlTag::Spacer => {
-					entity.insert(Node {
-						width: Val::Percent(100.0),
-						height: Val::Percent(100.0),
-						..default()
-					});
+					entity.insert((
+						Node {
+							width: Val::Percent(100.0),
+							height: Val::Percent(100.0),
+							..default()
+						},
+						Pickable::IGNORE,
+					));
 				}
 				HtmlTag::Ui => {
 					entity.insert((
@@ -130,10 +134,7 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 							height: Val::Percent(100.0),
 							..default()
 						},
-						Pickable {
-							should_block_lower: false,
-							is_hoverable: false,
-						},
+						Pickable::IGNORE,
 					));
 				}
 			}
