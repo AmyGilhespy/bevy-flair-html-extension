@@ -15,6 +15,12 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 
 	while i < bytes.len() {
 		if bytes[i] == b'<' {
+			// HTML comment
+			if starts_with(bytes, i, b"<!--") {
+				let end = find_comment_end(bytes, i)?;
+				i = end;
+				continue;
+			}
 			// Closing tag
 			if bytes.get(i + 1) == Some(&b'/') {
 				let end = find_byte(bytes, b'>', i)?;
@@ -59,9 +65,20 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 				// Opening tag
 				let end = find_byte(bytes, b'>', i)?;
 				let tag_src = &source[i + 1..end];
-				let element = parse_tag(tag_src)?;
+				let (element, self_closing) = parse_tag(tag_src)?;
 
-				stack.push(element);
+				if self_closing {
+					let node = HtmlNode::Element(element);
+
+					if let Some(parent) = stack.last_mut() {
+						parent.children.push(node);
+					} else {
+						nodes.push(node);
+					}
+				} else {
+					stack.push(element);
+				}
+
 				i = end + 1;
 			}
 		} else {
@@ -101,10 +118,11 @@ mod parse_htmlish_tests {
 	const GOOD_HTML: &str = r#"
 		<ui class="a">
 			<button id="my-button" class="b c" autofocus>
+				<!-- <hbox>This is a comment</hbox> -->
 				<vbox class="d" gap="12.25px">
-					<spacer></spacer>
+					<spacer />
 					<label id="my-label">Hello, world</label>
-					<spacer></spacer>
+					<spacer/>
 				</vbox>
 			</button>
 		</ui>
@@ -234,7 +252,12 @@ mod parse_htmlish_tests {
 	}
 }
 
-fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
+fn parse_tag(src: &str) -> Result<(HtmlElement, bool), HtmlUiError> {
+	let src = src.trim();
+	let self_closing = src.ends_with('/');
+
+	let src = src.trim_end_matches('/');
+
 	let parts = split_quoted_whitespace(src);
 	let mut parts = parts.into_iter();
 
@@ -266,14 +289,17 @@ fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
 		}
 	}
 
-	Ok(HtmlElement {
-		tag,
-		name_id,
-		classes,
-		gap,
-		autofocus,
-		children: Vec::new(),
-	})
+	Ok((
+		HtmlElement {
+			tag,
+			name_id,
+			classes,
+			gap,
+			autofocus,
+			children: Vec::new(),
+		},
+		self_closing,
+	))
 }
 
 fn split_quoted_whitespace(s: &str) -> Vec<&str> {
@@ -341,4 +367,19 @@ fn find_byte(bytes: &[u8], needle: u8, start: usize) -> Result<usize, HtmlUiErro
 		.position(|&b| b == needle)
 		.map(|p| start + p)
 		.ok_or_else(|| HtmlUiError::ParseError("unexpected end of input".into()))
+}
+
+fn starts_with(bytes: &[u8], i: usize, s: &[u8]) -> bool {
+	bytes.get(i..i + s.len()) == Some(s)
+}
+
+fn find_comment_end(bytes: &[u8], start: usize) -> Result<usize, HtmlUiError> {
+	let mut i = start + 4; // after "<!--"
+	while i + 2 < bytes.len() {
+		if bytes[i] == b'-' && bytes[i + 1] == b'-' && bytes[i + 2] == b'>' {
+			return Ok(i + 3);
+		}
+		i += 1;
+	}
+	Err(HtmlUiError::ParseError("unclosed HTML comment".into()))
 }

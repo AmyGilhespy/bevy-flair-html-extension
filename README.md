@@ -27,7 +27,7 @@ Supported tags include:
 	- The `<label>` tag inserts a `Text` element with the provided text.
 - `<button>` ... `</button>`
 	- The `<button>` tag inserts a `Button` element.
-- `<spacer>` ... `</spacer>`
+- `<spacer />`
 	- The `<spacer>` tag inserts a `Node` that expands in size as much as it can.
 
 You can add `class="example another-example"` to add classes to a tag, just like in real HTML.
@@ -42,30 +42,30 @@ Here is an example HTML document from one of my projects:
 <ui class="title-screen">
 	<hbox class="menu-area">
 		<vbox class="menu-list" gap="15px">
-			<spacer></spacer>
+			<spacer />
 			<button class="button continue">
 				<vbox>
-					<spacer></spacer>
+					<spacer />
 					<label class="label">Continue</label>
-					<spacer></spacer>
+					<spacer />
 				</vbox>
 			</button>
 			<button class="button load-game">
 				<vbox>
-					<spacer></spacer>
+					<spacer />
 					<label class="label">Load Game</label>
-					<spacer></spacer>
+					<spacer />
 				</vbox>
 			</button>
 			<button class="button quit">
 				<vbox>
-					<spacer></spacer>
+					<spacer />
 					<label class="label">Quit</label>
-					<spacer></spacer>
+					<spacer />
 				</vbox>
 			</button>
 		</vbox>
-		<spacer></spacer>
+		<spacer />
 	</hbox>
 </ui>
 ```
@@ -79,20 +79,18 @@ commands.insert_resource(HtmlCssUiResource {
 });
 ```
 
-If you want to detect a button press, a simple way is to give your button a class and use bevy_flair's APIs to query for it:
+If you want to detect a button press, a simple way is to give your button an id= and check the Name component:
 
 ```rust
 fn title_menu_interaction(
-	mut q_interaction: Query<(&Interaction, &ClassList), Changed<Interaction>>,
+	q_interaction: Query<(&Interaction, &Name), Changed<Interaction>>,
 	mut next_state: ResMut<NextState<GameState>>,
 ) {
 	#[allow(clippy::explicit_iter_loop)]
-	for (interaction, class_list) in q_interaction.iter_mut() {
+	for (interaction, name) in q_interaction.iter() {
 		if let Interaction::Pressed = *interaction {
-			if class_list.contains("button") {
-				if class_list.contains("continue") {
-					next_state.set(GameState::MainGame);
-				}
+			if name.as_str() == "continue-button" {
+				next_state.set(GameState::MainGame);
 			}
 		}
 	}
