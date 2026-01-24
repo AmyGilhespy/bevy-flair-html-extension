@@ -104,6 +104,10 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				}
 				HtmlTag::Label => {
 					// Label nodes will get text children
+					entity.insert(Pickable {
+						is_hoverable: false,
+						should_block_lower: false,
+					});
 				}
 				HtmlTag::Spacer => {
 					entity.insert(Node {
@@ -115,6 +119,9 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				HtmlTag::Ui => {
 					entity.insert((
 						Node {
+							display: Display::Flex,
+							flex_direction: FlexDirection::Column,
+							row_gap: *gap,
 							width: Val::Percent(100.0),
 							height: Val::Percent(100.0),
 							..default()
