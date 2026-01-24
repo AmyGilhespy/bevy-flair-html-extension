@@ -93,7 +93,14 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				}
 				HtmlTag::Node => {}
 				HtmlTag::Button => {
-					entity.insert((Button, AutoDirectionalNavigation::default()));
+					entity.insert((
+						Button,
+						AutoDirectionalNavigation::default(),
+						Pickable {
+							is_hoverable: true,
+							should_block_lower: true,
+						},
+					));
 				}
 				HtmlTag::Label => {
 					// Label nodes will get text children
