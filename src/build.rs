@@ -3,7 +3,7 @@ use bevy_flair::prelude::*;
 
 use crate::{
 	asset::HtmlUiAsset,
-	ast::{HtmlNode, HtmlTag},
+	ast::{HtmlElement, HtmlNode, HtmlTag},
 };
 
 #[derive(Component)]
@@ -49,13 +49,18 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 			});
 		}
 
-		HtmlNode::Element {
+		HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} => {
+		}) => {
 			let mut entity = commands.spawn((Node::default(),));
+
+			if let Some(name) = name_id {
+				entity.insert(Name::new(name.clone()));
+			}
 
 			if !classes.is_empty() {
 				entity.insert(ClassList::new(classes.join(" ").as_str()));
@@ -79,6 +84,7 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 						..default()
 					});
 				}
+				HtmlTag::Node => {}
 				HtmlTag::Button => {
 					entity.insert(Button);
 				}

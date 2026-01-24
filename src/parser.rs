@@ -1,13 +1,14 @@
 use bevy::prelude::Val;
 
 use crate::{
-	ast::{HtmlNode, HtmlTag},
+	ast::{HtmlElement, HtmlNode, HtmlTag},
 	error::HtmlUiError,
 };
 
+#[allow(clippy::type_complexity)]
 pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 	let mut nodes = Vec::new();
-	let mut stack: Vec<(HtmlTag, Vec<String>, Val, Vec<HtmlNode>)> = Vec::new();
+	let mut stack: Vec<HtmlElement> = Vec::new();
 
 	let mut i = 0;
 	let bytes = source.as_bytes();
@@ -19,7 +20,13 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 				let end = find_byte(bytes, b'>', i)?;
 				let tag_name = &source[i + 2..end].trim();
 
-				let (tag, classes, gap, children) = stack
+				let HtmlElement {
+					tag,
+					name_id,
+					classes,
+					gap,
+					children,
+				} = stack
 					.pop()
 					.ok_or_else(|| HtmlUiError::ParseError("unmatched closing tag".into()))?;
 
@@ -31,15 +38,16 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 					)));
 				}
 
-				let node = HtmlNode::Element {
+				let node = HtmlNode::Element(HtmlElement {
 					tag,
+					name_id,
 					classes,
 					gap,
 					children,
-				};
+				});
 
-				if let Some((_, _, _, parent_children)) = stack.last_mut() {
-					parent_children.push(node);
+				if let Some(parent) = stack.last_mut() {
+					parent.children.push(node);
 				} else {
 					nodes.push(node);
 				}
@@ -49,9 +57,9 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 				// Opening tag
 				let end = find_byte(bytes, b'>', i)?;
 				let tag_src = &source[i + 1..end];
-				let (tag, classes, gap) = parse_tag(tag_src)?;
+				let element = parse_tag(tag_src)?;
 
-				stack.push((tag, classes, gap, Vec::new()));
+				stack.push(element);
 				i = end + 1;
 			}
 		} else {
@@ -61,8 +69,8 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 
 			if !text.is_empty() {
 				let text_node = HtmlNode::Text(text.to_string());
-				if let Some((_, _, _, children)) = stack.last_mut() {
-					children.push(text_node);
+				if let Some(elem) = stack.last_mut() {
+					elem.children.push(text_node);
 				} else {
 					nodes.push(text_node);
 				}
@@ -83,15 +91,17 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 mod parse_htmlish_tests {
 	use bevy::ui::Val;
 
+	use crate::ast::HtmlElement;
+
 	use super::super::ast::{HtmlNode, HtmlTag};
 	use super::parse_htmlish;
 
 	const GOOD_HTML: &str = r#"
 		<ui class="a">
-			<button class="b c">
+			<button id="my-button" class="b c">
 				<vbox class="d" gap="12.25px">
 					<spacer></spacer>
-					<label>Hello, world</label>
+					<label id="my-label">Hello, world</label>
 					<spacer></spacer>
 				</vbox>
 			</button>
@@ -104,71 +114,87 @@ mod parse_htmlish_tests {
 		assert!(good_parsed.is_ok(), "Good HTML returned an error.");
 		let good = good_parsed.unwrap(); // Vec<HtmlNode>
 		assert_eq!(good.len(), 1, "Wrong number of HTML <ui> nodes.");
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = &good[0]
+		}) = &good[0]
 		else {
 			panic!("<ui> is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::Ui, "<ui> tag was not <ui>.");
+		assert!(name_id.is_none(), "<ui> had non-existent id field.");
 		assert_eq!(*classes, vec!["a".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
 		assert_eq!(children.len(), 1, "Wrong number of HTML <button> nodes.");
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = &children[0]
+		}) = &children[0]
 		else {
 			panic!("<button> is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::Button, "<button> tag was not <button>.");
+		assert!(
+			*name_id == Some("my-button".to_owned()),
+			"<button> lacked id field."
+		);
 		assert_eq!(*classes, vec!["b".to_owned(), "c".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
 		assert_eq!(children.len(), 1, "Wrong number of HTML <vbox> nodes.");
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = &children[0]
+		}) = &children[0]
 		else {
 			panic!("<vbox> is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::VBox, "<vbox> tag was not <vbox>.");
+		assert!(name_id.is_none(), "<vbox> had non-existent id field.");
 		assert_eq!(*classes, vec!["d".to_owned()]);
 		assert_eq!(*gap, Val::Px(12.25));
 		assert_eq!(children.len(), 3, "Wrong number of HTML <vbox> children.");
 		let child0 = &children[0];
 		let child1 = &children[1];
 		let child2 = &children[2];
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = child0
+		}) = child0
 		else {
 			panic!("<spacer> #0 is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::Spacer, "<spacer> tag was not <spacer>.");
+		assert!(name_id.is_none(), "<spacer> had non-existent id field.");
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = child1
+		}) = child1
 		else {
 			panic!("<label> #1 is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::Label, "<label> tag was not <label>.");
+		assert!(
+			*name_id == Some("my-label".to_owned()),
+			"<label> lacked id field."
+		);
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <label> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert_eq!(children.len(), 1, "Wrong number of HTML <label> children.");
@@ -176,23 +202,25 @@ mod parse_htmlish_tests {
 			panic!("<label> text is not Text");
 		};
 		assert_eq!(text, "Hello, world");
-		let HtmlNode::Element {
+		let HtmlNode::Element(HtmlElement {
 			tag,
+			name_id,
 			classes,
 			gap,
 			children,
-		} = child2
+		}) = child2
 		else {
 			panic!("<spacer> #2 is not Element");
 		};
 		assert_eq!(*tag, HtmlTag::Spacer, "<spacer> tag was not <spacer>.");
+		assert!(name_id.is_none(), "<spacer> had non-existent id field.");
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
 	}
 }
 
-fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
+fn parse_tag(src: &str) -> Result<HtmlElement, HtmlUiError> {
 	let parts = split_quoted_whitespace(src);
 	let mut parts = parts.into_iter();
 
@@ -202,11 +230,14 @@ fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
 
 	let tag = HtmlTag::from_str(tag_name)?;
 
+	let mut name_id = None;
 	let mut classes = Vec::new();
 	let mut gap: Val = Val::Auto;
 
 	for part in parts {
-		if let Some(rest) = part.strip_prefix("class=\"") {
+		if let Some(rest) = part.strip_prefix("id=\"") {
+			name_id = Some(rest.trim_end_matches('"').into());
+		} else if let Some(rest) = part.strip_prefix("class=\"") {
 			let value = rest.trim_end_matches('"');
 			classes.extend(
 				value
@@ -218,7 +249,13 @@ fn parse_tag(src: &str) -> Result<(HtmlTag, Vec<String>, Val), HtmlUiError> {
 		}
 	}
 
-	Ok((tag, classes, gap))
+	Ok(HtmlElement {
+		tag,
+		name_id,
+		classes,
+		gap,
+		children: Vec::new(),
+	})
 }
 
 fn split_quoted_whitespace(s: &str) -> Vec<&str> {
