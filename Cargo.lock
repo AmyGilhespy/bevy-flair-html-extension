@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-flair-html-extension"
-version = "0.7.1-alpha.1+git"
+version = "0.8.0-alpha.1+git"
 dependencies = [
  "bevy",
  "bevy_flair",

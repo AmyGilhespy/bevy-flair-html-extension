@@ -32,6 +32,7 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 					classes,
 					gap,
 					autofocus,
+					callback,
 					children,
 				} = stack
 					.pop()
@@ -51,6 +52,7 @@ pub fn parse_htmlish(source: &String) -> Result<Vec<HtmlNode>, HtmlUiError> {
 					classes,
 					gap,
 					autofocus,
+					callback,
 					children,
 				});
 
@@ -140,6 +142,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = &good[0]
 		else {
@@ -150,6 +153,7 @@ mod parse_htmlish_tests {
 		assert_eq!(*classes, vec!["a".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
 		assert!(!autofocus, "<ui> had non-existent autofocus.");
+		assert!(callback.is_none(), "<ui> had non-existent callback.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <button> nodes.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
@@ -157,6 +161,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = &children[0]
 		else {
@@ -170,6 +175,7 @@ mod parse_htmlish_tests {
 		assert_eq!(*classes, vec!["b".to_owned(), "c".to_owned()]);
 		assert_eq!(*gap, Val::Auto);
 		assert!(autofocus, "<button> lacked autofocus.");
+		assert!(callback.is_none(), "<button> had non-existent callback.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <vbox> nodes.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
@@ -177,6 +183,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = &children[0]
 		else {
@@ -187,6 +194,7 @@ mod parse_htmlish_tests {
 		assert_eq!(*classes, vec!["d".to_owned()]);
 		assert_eq!(*gap, Val::Px(12.25));
 		assert!(!autofocus, "<vbox> had non-existent autofocus.");
+		assert!(callback.is_none(), "<vbox> had non-existent callback.");
 		assert_eq!(children.len(), 3, "Wrong number of HTML <vbox> children.");
 		let child0 = &children[0];
 		let child1 = &children[1];
@@ -197,6 +205,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = child0
 		else {
@@ -207,6 +216,7 @@ mod parse_htmlish_tests {
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert!(!autofocus, "<spacer> had non-existent autofocus.");
+		assert!(callback.is_none(), "<spacer> had non-existent callback.");
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
 		let HtmlNode::Element(HtmlElement {
 			tag,
@@ -214,6 +224,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = child1
 		else {
@@ -227,6 +238,7 @@ mod parse_htmlish_tests {
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <label> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert!(!autofocus, "<label> had non-existent autofocus.");
+		assert!(callback.is_none(), "<label> had non-existent callback.");
 		assert_eq!(children.len(), 1, "Wrong number of HTML <label> children.");
 		let HtmlNode::Text(text) = &children[0] else {
 			panic!("<label> text is not Text");
@@ -238,6 +250,7 @@ mod parse_htmlish_tests {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) = child2
 		else {
@@ -248,6 +261,7 @@ mod parse_htmlish_tests {
 		assert_eq!(classes.len(), 0, "Wrong number of HTML <spacer> classes.");
 		assert_eq!(*gap, Val::Auto);
 		assert!(!autofocus, "<spacer> had non-existent autofocus.");
+		assert!(callback.is_none(), "<spacer> had non-existent callback.");
 		assert_eq!(children.len(), 0, "Wrong number of HTML <spacer> children.");
 	}
 }
@@ -271,6 +285,7 @@ fn parse_tag(src: &str) -> Result<(HtmlElement, bool), HtmlUiError> {
 	let mut classes = Vec::new();
 	let mut gap: Val = Val::Auto;
 	let mut autofocus: bool = false;
+	let mut callback = None;
 
 	for part in parts {
 		if let Some(rest) = part.strip_prefix("id=\"") {
@@ -286,6 +301,8 @@ fn parse_tag(src: &str) -> Result<(HtmlElement, bool), HtmlUiError> {
 			gap = parse_val(rest.trim_end_matches('"'))?;
 		} else if part == "autofocus" {
 			autofocus = true;
+		} else if let Some(rest) = part.strip_prefix("callback=\"") {
+			callback = Some(rest.trim_end_matches('"').to_owned());
 		}
 	}
 
@@ -296,6 +313,7 @@ fn parse_tag(src: &str) -> Result<(HtmlElement, bool), HtmlUiError> {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children: Vec::new(),
 		},
 		self_closing,

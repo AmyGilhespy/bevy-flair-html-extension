@@ -6,50 +6,65 @@ use bevy_flair::prelude::*;
 use crate::{
 	asset::HtmlUiAsset,
 	ast::{HtmlElement, HtmlNode, HtmlTag},
+	error::HtmlUiError,
+	resources::HtmlCssUiResource,
 };
 
 #[derive(Component)]
 pub struct HtmlUiRoot {
-	//pub handle: Handle<HtmlUiAsset>,
 	pub id: AssetId<HtmlUiAsset>,
 }
 
-pub fn spawn_html_ui(
-	commands: &mut Commands,
-	asset: &HtmlUiAsset,
+#[allow(clippy::implicit_hasher)]
+pub(crate) fn spawn_html_ui(
+	world: &mut World,
 	id: AssetId<HtmlUiAsset>,
-	style_sheet: NodeStyleSheet,
-) -> Entity {
-	let root_entity = commands
-		.spawn((
-			Node {
-				position_type: PositionType::Absolute,
-				width: Val::Percent(100.0),
-				height: Val::Percent(100.0),
-				..default()
-			},
-			Pickable::IGNORE,
-			HtmlUiRoot { id },
-			style_sheet,
-		))
-		.id();
+) -> Result<Entity, HtmlUiError> {
+	let root_entity: Entity;
+	{
+		let Some(res) = world.get_resource::<HtmlCssUiResource>() else {
+			return Err(HtmlUiError::ResourceNotFound);
+		};
 
-	for node in &asset.ast {
-		spawn_node(commands, root_entity, node);
+		let mut style_sheet = NodeStyleSheet::Inherited;
+		if let Some(res_css) = &res.css {
+			style_sheet = NodeStyleSheet::new(res_css.clone());
+		}
+
+		root_entity = world
+			.spawn((
+				Node {
+					position_type: PositionType::Absolute,
+					width: Val::Percent(100.0),
+					height: Val::Percent(100.0),
+					..default()
+				},
+				Pickable::IGNORE,
+				HtmlUiRoot { id },
+				style_sheet,
+			))
+			.id();
 	}
 
-	root_entity
+	let Some(asset) = world.resource::<Assets<HtmlUiAsset>>().get(id) else {
+		return Err(HtmlUiError::AssetNotFound);
+	};
+
+	let ast = asset.ast.clone();
+	for node in &ast {
+		spawn_node(world, root_entity, node);
+	}
+
+	Ok(root_entity)
 }
 
-fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
+#[allow(clippy::too_many_lines)]
+fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) {
 	match node {
 		HtmlNode::Text(text) => {
-			/*
-			commands.entity(parent).with_children(|p| {
-				p.spawn(Text::new(text.clone()));
-			});
-			*/
-			commands.entity(parent).insert(Text::new(text.clone()));
+			let text_entity = world.spawn(Text::new(text.clone())).id();
+
+			world.entity_mut(parent).add_child(text_entity);
 		}
 
 		HtmlNode::Element(HtmlElement {
@@ -58,9 +73,22 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 			classes,
 			gap,
 			autofocus,
+			callback,
 			children,
 		}) => {
-			let mut entity = commands.spawn((Node::default(),));
+			let mut entity: EntityWorldMut;
+			{
+				let Some(res) = world.get_resource::<HtmlCssUiResource>() else {
+					return;
+				};
+
+				let mut style_sheet = NodeStyleSheet::Inherited;
+				if let Some(res_css) = &res.css {
+					style_sheet = NodeStyleSheet::new(res_css.clone());
+				}
+
+				entity = world.spawn((Node::default(), style_sheet));
+			}
 
 			if let Some(name) = name_id {
 				entity.insert(Name::new(name.clone()));
@@ -74,7 +102,6 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				entity.insert(ClassList::new(classes.join(" ").as_str()));
 			}
 
-			#[allow(clippy::match_same_arms)]
 			match tag {
 				HtmlTag::VBox => {
 					entity.insert((
@@ -110,7 +137,6 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 					));
 				}
 				HtmlTag::Label => {
-					// Label nodes will get text children
 					entity.insert(Pickable::IGNORE);
 				}
 				HtmlTag::Spacer => {
@@ -139,11 +165,20 @@ fn spawn_node(commands: &mut Commands, parent: Entity, node: &HtmlNode) {
 				}
 			}
 
-			let id = entity.id();
-			commands.entity(parent).add_child(id);
+			let entity_id = entity.id();
+
+			world.entity_mut(parent).add_child(entity_id);
 
 			for child in children {
-				spawn_node(commands, id, child);
+				spawn_node(world, entity_id, child);
+			}
+
+			if let Some(cb_key) = callback {
+				world.resource_scope(|world: &mut World, resource: Mut<HtmlCssUiResource>| {
+					if let Some(cb) = resource.callbacks.get(cb_key) {
+						cb(world, entity_id);
+					}
+				});
 			}
 		}
 	}
