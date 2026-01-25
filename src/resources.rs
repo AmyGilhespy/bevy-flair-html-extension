@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use bevy_flair::style::StyleSheet;
 
-use crate::{HtmlCallback, HtmlUiAsset, HtmlUiError};
+use crate::{HtmlCallback, HtmlUiAsset};
 
 #[derive(Default, Resource)]
 pub struct HtmlCssUiResource {
@@ -25,7 +25,7 @@ impl HtmlCssUiResource {
 	#[must_use]
 	pub fn with_callback<F>(mut self, name: impl Into<String>, f: F) -> Self
 	where
-		F: Fn(&mut World, Entity) -> Result<(), HtmlUiError> + Send + Sync + 'static,
+		F: Fn(&mut World, Entity) -> anyhow::Result<()> + Send + Sync + 'static,
 	{
 		self.callbacks.insert(name.into(), Box::new(f));
 		self

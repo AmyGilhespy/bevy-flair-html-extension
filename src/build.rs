@@ -52,21 +52,19 @@ pub(crate) fn spawn_html_ui(
 
 	let ast = asset.ast.clone();
 	for node in &ast {
-		let _ = spawn_node(world, root_entity, node);
+		spawn_node(world, root_entity, node);
 	}
 
 	Ok(root_entity)
 }
 
 #[allow(clippy::too_many_lines)]
-fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) -> Result<(), HtmlUiError> {
+fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) {
 	match node {
 		HtmlNode::Text(text) => {
 			let text_entity = world.spawn(Text::new(text.clone())).id();
 
 			world.entity_mut(parent).add_child(text_entity);
-
-			Ok(())
 		}
 
 		HtmlNode::Element(HtmlElement {
@@ -81,7 +79,7 @@ fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) -> Result<(), 
 			let mut entity: EntityWorldMut;
 			{
 				let Some(res) = world.get_resource::<HtmlCssUiResource>() else {
-					return Err(HtmlUiError::ResourceNotFound);
+					return;
 				};
 
 				let mut style_sheet = NodeStyleSheet::Inherited;
@@ -172,18 +170,15 @@ fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) -> Result<(), 
 			world.entity_mut(parent).add_child(entity_id);
 
 			for child in children {
-				let _ = spawn_node(world, entity_id, child);
+				spawn_node(world, entity_id, child);
 			}
 
 			if let Some(cb_key) = callback {
 				world.resource_scope(|world: &mut World, resource: Mut<HtmlCssUiResource>| {
 					if let Some(cb) = resource.callbacks.get(cb_key) {
-						return cb(world, entity_id);
+						_ = cb(world, entity_id);
 					}
-					Ok(())
-				})
-			} else {
-				Ok(())
+				});
 			}
 		}
 	}
