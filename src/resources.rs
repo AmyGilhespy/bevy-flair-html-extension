@@ -25,7 +25,7 @@ impl HtmlCssUiResource {
 	#[must_use]
 	pub fn with_callback<F>(mut self, name: impl Into<String>, f: F) -> Self
 	where
-		F: Fn(&mut World, Entity) -> anyhow::Result<()> + Send + Sync + 'static,
+		F: Fn(&mut World, Entity) -> Option<()> + Send + Sync + 'static,
 	{
 		self.callbacks.insert(name.into(), Box::new(f));
 		self

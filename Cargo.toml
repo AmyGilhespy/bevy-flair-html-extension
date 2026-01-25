@@ -1,6 +1,6 @@
 [package]
 name = "bevy-flair-html-extension"
-version = "0.10.0-alpha.1+git"
+version = "0.11.0-alpha.1+git"
 edition = "2024"
 description = "Extension for bevy_flair which adds basic HTML-like syntax with hot-reloading."
 license = "MIT OR Apache-2.0"
@@ -8,7 +8,6 @@ authors = ["Amy Gilhespy <amyogilhespy@gmail.com>"]
 repository = "https://github.com/AmyGilhespy/bevy-flair-html-extension"
 
 [dependencies]
-anyhow = "1.0.100"
 bevy = { version = "0.18.0", default-features = false, features = [
 	"bevy_asset",
 	"bevy_input_focus",
