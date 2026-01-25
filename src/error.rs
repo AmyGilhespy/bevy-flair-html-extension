@@ -16,4 +16,7 @@ pub enum HtmlUiError {
 
 	#[error("asset not found")]
 	AssetNotFound,
+
+	#[error("user-defined error: {0}")]
+	UserDefinedError(String),
 }
