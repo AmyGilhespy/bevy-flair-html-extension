@@ -62,9 +62,7 @@ pub(crate) fn spawn_html_ui(
 fn spawn_node(world: &mut World, parent: Entity, node: &HtmlNode) {
 	match node {
 		HtmlNode::Text(text) => {
-			let text_entity = world.spawn(Text::new(text.clone())).id();
-
-			world.entity_mut(parent).add_child(text_entity);
+			world.entity_mut(parent).insert(Text::new(text.clone()));
 		}
 
 		HtmlNode::Element(HtmlElement {
