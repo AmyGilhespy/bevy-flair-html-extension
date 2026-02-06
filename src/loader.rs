@@ -1,9 +1,13 @@
-use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext, io::Reader};
+use bevy::{
+	asset::{AssetLoader, AsyncReadExt, LoadContext, io::Reader},
+	reflect::TypePath,
+};
 
 use crate::{
 	asset::HtmlUiAsset, error::HtmlUiError, parser::parse_htmlish, settings::HtmlUiSettings,
 };
 
+#[derive(TypePath)]
 pub struct HtmlUiLoader;
 
 impl AssetLoader for HtmlUiLoader {

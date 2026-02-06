@@ -4,12 +4,7 @@ use crate::HtmlUiError;
 
 #[derive(Debug, Clone)]
 pub enum HtmlNode {
-	Element {
-		tag: HtmlTag,
-		classes: Vec<String>,
-		gap: Val,
-		children: Vec<HtmlNode>,
-	},
+	Element(HtmlElement),
 	Text(String),
 }
 
@@ -18,6 +13,7 @@ pub enum HtmlTag {
 	Ui,
 	VBox,
 	HBox,
+	Node,
 	Label,
 	Button,
 	Spacer,
@@ -29,6 +25,7 @@ impl HtmlTag {
 			"ui" => Ok(Self::Ui),
 			"vbox" => Ok(Self::VBox),
 			"hbox" => Ok(Self::HBox),
+			"node" => Ok(Self::Node),
 			"label" => Ok(Self::Label),
 			"button" => Ok(Self::Button),
 			"spacer" => Ok(Self::Spacer),
@@ -41,6 +38,7 @@ impl HtmlTag {
 			Self::Ui => "ui",
 			Self::VBox => "vbox",
 			Self::HBox => "hbox",
+			Self::Node => "node",
 			Self::Label => "label",
 			Self::Button => "button",
 			Self::Spacer => "spacer",

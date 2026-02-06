@@ -10,4 +10,10 @@ pub enum HtmlUiError {
 
 	#[error("io error: {0}")]
 	IoError(std::io::Error),
+
+	#[error("resource not found")]
+	ResourceNotFound,
+
+	#[error("asset not found")]
+	AssetNotFound,
 }

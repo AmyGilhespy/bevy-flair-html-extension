@@ -1,8 +1,9 @@
 use bevy::{
 	asset::{LoadState, RecursiveDependencyLoadState},
+	ecs::message::{MessageCursor, Messages},
 	prelude::*,
 };
-use bevy_flair::style::{StyleSheet, components::NodeStyleSheet};
+use bevy_flair::style::StyleSheet;
 
 use crate::{
 	asset::HtmlUiAsset,
@@ -22,144 +23,182 @@ impl Plugin for HtmlUiPlugin {
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
 fn html_ui_hot_reload(
-	mut messages: MessageReader<AssetEvent<HtmlUiAsset>>,
-	assets_html: Res<Assets<HtmlUiAsset>>,
-	mut commands: Commands,
-	q_roots: Query<(Entity, &HtmlUiRoot)>,
-	handles: Option<Res<HtmlCssUiResource>>,
+	world: &mut World,
+	mut cursor: Local<MessageCursor<AssetEvent<HtmlUiAsset>>>,
 ) {
-	for message in messages.read() {
-		if let AssetEvent::Modified { id } = message
-			&& let Some(asset_html_actual) = assets_html.get(*id)
-		{
-			for (entity, root) in q_roots.iter() {
+	let mut to_rebuild = Vec::new();
+
+	{
+		let mut q_roots = world.query::<(Entity, &HtmlUiRoot)>();
+
+		let messages = world
+			.get_resource::<Messages<AssetEvent<HtmlUiAsset>>>()
+			.expect("AssetEvent messages missing");
+
+		for event in cursor.read(messages) {
+			let AssetEvent::Modified { id } = event else {
+				continue;
+			};
+
+			for (entity, root) in q_roots.iter(world) {
 				if root.id == *id {
-					let mut style_sheet = NodeStyleSheet::Inherited;
-					if let Some(res) = &handles
-						&& let Some(res_css) = &res.css
-					{
-						style_sheet = NodeStyleSheet::new(res_css.clone());
-					}
-					commands.entity(entity).despawn();
-					let _ = spawn_html_ui(&mut commands, asset_html_actual, *id, style_sheet);
+					to_rebuild.push((entity, *id));
 				}
 			}
 		}
+	}
+
+	for (entity, id) in to_rebuild {
+		// Not sure if these commented-out checks were needed.  Needs testing.
+		//if world.resource::<Assets<HtmlUiAsset>>().get(id).is_some() && world.get_resource::<HtmlCssUiResource>().is_some() {
+		world.despawn(entity);
+		let _ = spawn_html_ui(world, id);
+		//}
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
 #[allow(clippy::type_complexity)]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
 fn html_ui_watch_load(
-	mut commands: Commands,
-	asset_server: Res<AssetServer>,
-	assets_html: Res<Assets<HtmlUiAsset>>,
-	assets_css: Res<Assets<StyleSheet>>,
-	handles: Option<Res<HtmlCssUiResource>>,
+	world: &mut World,
 	mut loaded_handles_ids: Local<Option<(AssetId<HtmlUiAsset>, Option<AssetId<StyleSheet>>)>>,
 	mut root_entity: Local<Option<Entity>>,
-	q_roots: Query<(Entity, &HtmlUiRoot)>,
 ) {
-	let Some(res) = handles else {
-		if loaded_handles_ids.is_some()
-			&& let Some(re) = *root_entity
-		{
-			for (e, _) in q_roots.iter() {
-				if e == re {
-					commands.entity(e).despawn();
+	let id_html: AssetId<HtmlUiAsset>;
+	{
+		// ---- Phase 1: Check if we should skip or despawn old UI ----
+		let Some(res) = world.get_resource::<HtmlCssUiResource>() else {
+			// Resource doesn't exist, despawn any existing UI
+			if let Some(re) = *root_entity {
+				let mut q_roots = world.query::<(Entity, &HtmlUiRoot)>();
+				let mut entities_to_despawn = Vec::new();
+				for (entity, _) in q_roots.iter(world) {
+					if entity == re {
+						entities_to_despawn.push(entity);
+					}
 				}
+				for entity in entities_to_despawn {
+					world.despawn(entity);
+				}
+				*root_entity = None;
 			}
-		}
-		return;
-	};
-
-	let id_html = res.html.id();
-	if let Some(loaded_ids) = *loaded_handles_ids {
-		if let Some(res_css) = &res.css {
-			let id_css = res_css.id();
-			if id_html == loaded_ids.0 && Some(id_css) == loaded_ids.1 {
-				return;
-			}
-		} else if id_html == loaded_ids.0 && loaded_ids.1.is_none() {
-			return;
-		}
-	}
-
-	let Some(load_state_html) = asset_server.get_load_state(id_html) else {
-		return;
-	};
-	match load_state_html {
-		LoadState::NotLoaded | LoadState::Loading | LoadState::Failed(_) => return,
-		LoadState::Loaded => {}
-	}
-	let Some(load_state_recursive_html) = asset_server.get_recursive_dependency_load_state(id_html)
-	else {
-		return;
-	};
-	match load_state_recursive_html {
-		RecursiveDependencyLoadState::NotLoaded
-		| RecursiveDependencyLoadState::Loading
-		| RecursiveDependencyLoadState::Failed(_) => return,
-		RecursiveDependencyLoadState::Loaded => {}
-	}
-
-	let opt_html = assets_html.get(id_html);
-	let Some(asset_html_actual) = opt_html else {
-		return; // Not loaded yet.
-	};
-
-	if let Some(res_css) = &res.css {
-		let id_css = res_css.id();
-
-		let Some(load_state_css) = asset_server.get_load_state(id_css) else {
+			*loaded_handles_ids = None;
 			return;
 		};
-		match load_state_css {
-			LoadState::NotLoaded | LoadState::Loading | LoadState::Failed(_) => return,
-			LoadState::Loaded => {}
+
+		// Check if assets have changed
+		id_html = res.html.id();
+		let mut needs_reload = true;
+
+		if let Some(loaded_ids) = *loaded_handles_ids {
+			let same_html = id_html == loaded_ids.0;
+			let same_css = match &res.css {
+				Some(css) => Some(css.id()) == loaded_ids.1,
+				None => loaded_ids.1.is_none(),
+			};
+
+			if same_html && same_css {
+				needs_reload = false;
+			}
 		}
-		let Some(load_state_recursive_css) =
-			asset_server.get_recursive_dependency_load_state(id_css)
+
+		if !needs_reload {
+			return;
+		}
+
+		// ---- Phase 2: Check load states ----
+		let asset_server = world.resource::<AssetServer>();
+
+		// Check HTML load state
+		let Some(load_state_html) = asset_server.get_load_state(id_html) else {
+			return;
+		};
+		match load_state_html {
+			LoadState::Loaded => {}
+			LoadState::NotLoaded | LoadState::Loading | LoadState::Failed(_) => return,
+		}
+
+		// Check HTML recursive dependencies
+		let Some(recursive_load_state_html) =
+			asset_server.get_recursive_dependency_load_state(id_html)
 		else {
 			return;
 		};
-		match load_state_recursive_css {
-			RecursiveDependencyLoadState::NotLoaded
-			| RecursiveDependencyLoadState::Loading
-			| RecursiveDependencyLoadState::Failed(_) => return,
+		match recursive_load_state_html {
 			RecursiveDependencyLoadState::Loaded => {}
+			_ => return,
 		}
 
-		let opt_css = assets_css.get(id_css);
-		if opt_css.is_none() {
-			return; // Not loaded yet.
+		// Check HTML asset exists
+		if world
+			.resource::<Assets<HtmlUiAsset>>()
+			.get(id_html)
+			.is_none()
+		{
+			return;
 		}
-	}
 
-	if let Some(re) = *root_entity {
-		for (e, _) in q_roots.iter() {
-			if e == re {
-				commands.entity(e).despawn();
+		// Check CSS if present
+		if let Some(res_css) = &res.css {
+			let id_css = res_css.id();
+
+			// Check CSS load state
+			let Some(load_state_css) = asset_server.get_load_state(id_css) else {
+				return;
+			};
+			match load_state_css {
+				LoadState::Loaded => {}
+				_ => return,
+			}
+
+			// Check CSS recursive dependencies
+			let Some(recursive_load_state_css) =
+				asset_server.get_recursive_dependency_load_state(id_css)
+			else {
+				return;
+			};
+			match recursive_load_state_css {
+				RecursiveDependencyLoadState::Loaded => {}
+				_ => return,
+			}
+
+			// Check CSS asset exists
+			let assets_css = world.resource::<Assets<StyleSheet>>();
+			if assets_css.get(id_css).is_none() {
+				return;
 			}
 		}
+
+		// ---- Phase 3: Despawn old UI ----
+		if let Some(re) = *root_entity {
+			let mut q_roots = world.query::<(Entity, &HtmlUiRoot)>();
+			let mut entities_to_despawn = Vec::new();
+			for (entity, _) in q_roots.iter(world) {
+				if entity == re {
+					entities_to_despawn.push(entity);
+				}
+			}
+			for entity in entities_to_despawn {
+				world.despawn(entity);
+			}
+			*root_entity = None;
+		}
 	}
 
-	let mut style_sheet = NodeStyleSheet::Inherited;
-	let mut id_css_opt = None;
-	if let Some(res_css) = &res.css {
-		id_css_opt = Some(res_css.id());
-		style_sheet = NodeStyleSheet::new(res_css.clone());
+	// ---- Phase 4: Spawn new UI ----
+	match spawn_html_ui(world, id_html) {
+		Ok(new_root) => {
+			*root_entity = Some(new_root);
+			if let Some(res) = world.get_resource::<HtmlCssUiResource>() {
+				*loaded_handles_ids =
+					Some((id_html, res.css.as_ref().map(bevy::prelude::Handle::id)));
+			} else {
+				*loaded_handles_ids = Some((id_html, None));
+			}
+		}
+		Err(_) => {
+			*loaded_handles_ids = None;
+		}
 	}
-
-	*root_entity = Some(spawn_html_ui(
-		&mut commands,
-		asset_html_actual,
-		id_html,
-		style_sheet,
-	));
-
-	*loaded_handles_ids = Some((id_html, id_css_opt));
 }
