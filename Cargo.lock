@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-flair-html-extension"
-version = "0.12.0-alpha.1+git"
+version = "1.0.0"
 dependencies = [
  "bevy",
  "bevy_flair",
@@ -475,7 +475,8 @@ dependencies = [
 [[package]]
 name = "bevy_flair"
 version = "0.7.0"
-source = "git+https://github.com/eckz/bevy_flair?branch=main#c9d2eece236c60a64898e0339e045daaf4062dd2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81f6c83210ac82877de5055d65c80760ac82357d4e1983b1e8540ddaab8469b3"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -487,7 +488,8 @@ dependencies = [
 [[package]]
 name = "bevy_flair_core"
 version = "0.7.0"
-source = "git+https://github.com/eckz/bevy_flair?branch=main#c9d2eece236c60a64898e0339e045daaf4062dd2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91f8a78aafb5d61991f878b00fa70cf397d0e3b55a536e15d0a1194072ca7a73"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -507,7 +509,8 @@ dependencies = [
 [[package]]
 name = "bevy_flair_css_parser"
 version = "0.7.0"
-source = "git+https://github.com/eckz/bevy_flair?branch=main#c9d2eece236c60a64898e0339e045daaf4062dd2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58c05e194fdf1037a639601498c0288d58d265fcccd8041ff0f0a30ad22e5d84"
 dependencies = [
  "ariadne",
  "bevy_app",
@@ -538,7 +541,8 @@ dependencies = [
 [[package]]
 name = "bevy_flair_style"
 version = "0.7.0"
-source = "git+https://github.com/eckz/bevy_flair?branch=main#c9d2eece236c60a64898e0339e045daaf4062dd2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c13b2ef57ea24b7926dc07a76f4b31714622ee3f6cc422d4c2d173a8fc68cb0"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -2887,9 +2891,9 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "siphasher"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
+checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
 name = "skrifa"
