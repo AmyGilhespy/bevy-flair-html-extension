@@ -8,6 +8,17 @@ pub enum HtmlNode {
 	Text(String),
 }
 
+#[derive(Debug, Clone)]
+pub struct HtmlElement {
+	pub tag: HtmlTag,
+	pub name_id: Option<String>,
+	pub classes: Vec<String>,
+	pub gap: Val,
+	pub autofocus: bool,
+	pub callback: Option<String>,
+	pub children: Vec<HtmlNode>,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum HtmlTag {
 	Ui,
