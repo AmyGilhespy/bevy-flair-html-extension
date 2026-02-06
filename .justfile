@@ -1,5 +1,5 @@
 # justfile
-# `just build[-all]` -> dev, or `just build[-all] profile=release` -> release
+# `just build[-all]` -> dev, or `just --set profile release build[-all]` -> release
 
 profile := "debug"
 
@@ -10,12 +10,12 @@ default: list
 list:
     just --list
 
-# Build with `just build` -> dev, or `just build profile=release` -> release
+# Build with `just build` -> dev, or `just --set profile release build` -> release
 build:
     clear
     cargo build {{ if profile == "release" { "--release" } else { "" } }}
 
-# Build with `just build-all` -> dev, or `just build-all profile=release` -> release
+# Build with `just build-all` -> dev, or `just --set profile release build-all` -> release
 build-all: cross-linux cross-windows cross-macos-x64 cross-macos-aarch64
 
 # Clear cache, delete temps, and I think it also deletes the built files.
